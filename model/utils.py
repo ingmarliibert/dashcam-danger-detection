@@ -72,7 +72,7 @@ def run_inference_for_image_path(model, image_path):
 
 
 def load_model(model_name):
-    base_url = 'http://download.tensorflow.org/models/object_detection/'
+    base_url = 'http://download.tensorflow.org/models/object_detection/tf2/20200711/'
     model_file = model_name + '.tar.gz'
     model_dir = tf.keras.utils.get_file(
         fname=model_name,
