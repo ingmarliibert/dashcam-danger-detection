@@ -18,3 +18,4 @@ contextlib2~=0.6.0.post1
 ipython~=7.18.1
 lxml~=4.5.2
 networkx~=2.5
+sklearn==0.23.2
