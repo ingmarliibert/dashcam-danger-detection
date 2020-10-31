@@ -1,71 +1,65 @@
-import os
-import pickle
-import math
-import random
-import csv
-from PIL import Image
-
-import matplotlib.pyplot as plt
-import cv2
+import pathlib
 import numpy as np
-from sklearn.utils import shuffle
+from tensorflow import keras
+from tensorflow.keras import layers
 import tensorflow as tf
 import time
+import pandas as pd
+from tensorflow.python.keras.applications.mobilenet_v2 import MobileNetV2
 
-from traffic_sign_models.google_le_net import GoogleNet
+batch_size = 20
+img_height = 32
+img_width = 32
 
-# 1 Reload the preprocessed data
+TRAFFIC_SIGN_ROOT = './data/traffic-sign'
+TRAIN_ROOT = './data/traffic-sign/train'
+TEST_CLEAN = './data/traffic-sign/test-clean'
 
-ROOT_DATA = 'data/traffic-sign-pickled'
+train_ds = tf.keras.preprocessing.image_dataset_from_directory(
+    pathlib.Path(TRAIN_ROOT),
+    batch_size=batch_size,
+    validation_split=0.2,
+    subset="training",
+    seed=123,
+    image_size=(img_height, img_width),
+    labels='inferred',
+    label_mode='int')
 
-pickle_file = f'{ROOT_DATA}/pre-data.pickle'
-with open(pickle_file, 'rb') as f:
-    pickle_data = pickle.load(f)
-    X_train = pickle_data['train_features']
-    y_train = pickle_data['train_labels']
-    X_valid = pickle_data['valid_features']
-    y_valid = pickle_data['valid_labels']
-    X_test = pickle_data['test_features']
-    y_test = pickle_data['test_labels']
-    signnames = pickle_data['signnames']
-    del pickle_data  # Free up memory
 
-# Shuffle the data set
-X_train, y_train = shuffle(X_train, y_train)
-X_valid, y_valid = shuffle(X_valid, y_valid)
-X_test, y_test = shuffle(X_test, y_test)
+val_ds = tf.keras.preprocessing.image_dataset_from_directory(
+  pathlib.Path(TEST_CLEAN),
+  validation_split=0.2,
+  subset="validation",
+  seed=123,
+  image_size=(img_height, img_width),
+  batch_size=batch_size)
 
-print(X_train.shape, y_train.shape)
-print(X_valid.shape, y_valid.shape)
-print(X_test.shape, y_test.shape)
-print(len(signnames))
-print('Data loaded.')
+# For performance
+# https://www.tensorflow.org/tutorials/images/classification#configure_the_dataset_for_performance
+AUTOTUNE = tf.data.experimental.AUTOTUNE
 
-# Training
+train_ds = train_ds.cache().shuffle(1000).prefetch(buffer_size=AUTOTUNE)
+val_ds = val_ds.cache().prefetch(buffer_size=AUTOTUNE)
 
-## Strategy
-
-# Placeholder
-# fixes: RuntimeError: tf.placeholder() is not compatible with eager execution.
-# tf.compat.v1.disable_eager_execution()
-
-# x = tf.compat.v1.placeholder(tf.float32, (None, 32, 32, 3))
-# y = tf.compat.v1.placeholder(tf.int32, (None))
-# one_hot_y = tf.one_hot(y, 43)
-# keep_prob = tf.compat.v1.placeholder_with_default(1.0, shape=())
+"""
+@TODO: https://www.tensorflow.org/tutorials/images/data_augmentation
+"""
+normalization_layer = layers.experimental.preprocessing.Rescaling(1./255)
+train_normalized_ds = train_ds.map(lambda x, y: (normalization_layer(x), y))
+val_normalized_ds = val_ds.map(lambda x, y: (normalization_layer(x), y))
 
 NUM_CLASSES = 43
-model = GoogleNet(NUM_CLASSES)
 
 # Hyper-parameters
 LEARNING_RATE = 4e-4
-EPOCHS = 35
-BATCH_SIZE = 55
+EPOCHS = 20
+# BATCH_SIZE = 55
 
 # https://www.tensorflow.org/api_docs/python/tf/keras/optimizers/Adam
 optimizer = tf.keras.optimizers.Adam(learning_rate = LEARNING_RATE)
+loss_fn = tf.keras.losses.SparseCategoricalCrossentropy()
 
-loss_object = tf.keras.losses.SparseCategoricalCrossentropy()
+# Prepare the metrics for train & test
 train_loss = tf.keras.metrics.Mean(name='train_loss')
 train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(
     name='train_accuracy')
@@ -78,13 +72,15 @@ test_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(
 @tf.function
 def train_step(images, labels, optimizer):
     with tf.GradientTape() as tape:
-        predictions = model(images, training=True)
-        loss = loss_object(labels, predictions)
+        # Logits for this minibatch
+        logits = model(images, training=True)
+        loss = loss_fn(labels, logits)
 
     gradients = tape.gradient(loss, model.trainable_variables)
     optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-    # train_loss(loss)
-    # train_accuracy(labels, predictions)
+
+    train_loss(loss)
+    train_accuracy(labels, logits)
 
     return loss
 
@@ -92,68 +88,52 @@ def train_step(images, labels, optimizer):
 @tf.function
 def test_step(images, labels):
     predictions = model(images, training=False)
-    t_loss = loss_object(labels, predictions)
+    print(f'predictions={predictions} labels={labels}')
+    t_loss = loss_fn(labels, predictions)
 
     test_loss(t_loss)
     test_accuracy(labels, predictions)
 
 
-# X_train, y_train = shuffle(X_train, y_train)
+def tf_mobilenetv2():
+    """
+    https://www.tensorflow.org/api_docs/python/tf/keras/applications/MobileNetV2
+    """
+    from tensorflow.keras.layers import Input
+    model = MobileNetV2(classes=NUM_CLASSES, weights=None, input_tensor=Input(shape=(img_height, img_width, 3)))
 
-"""
-The data has to be of shape 4.
-More information here: https://datascience.stackexchange.com/questions/64072/input-0-is-incompatible-with-layer-conv2d-2-expected-ndim-4-found-ndim-3-i-get
-Basically, images need to be 4D [batch_size, img_height, img_width, number_of_channels]
-This is done by tensorflow here.
-"""
-train_ds = tf.data.Dataset.from_tensor_slices(
-    (X_train, y_train)).shuffle(10000).batch(BATCH_SIZE)
+    model.compile(optimizer=optimizer, loss=keras.losses.SparseCategoricalCrossentropy(), metrics=['accuracy'])
+    model.fit(train_ds, validation_data=val_ds, epochs=EPOCHS, batch_size=batch_size)
 
-test_ds = tf.data.Dataset.from_tensor_slices(
-    (X_test, y_test)).batch(BATCH_SIZE)
+    return model
 
-"""
-Prefer tf.train.Checkpoint over save_weights for training checkpoints.
-from: https://www.tensorflow.org/api_docs/python/tf/keras/Model#save_weights
-So -> https://www.tensorflow.org/guide/checkpoint#manual_checkpointing
-"""
-iterator = iter(train_ds)
-ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optimizer, net=model, iterator=iterator)
-manager = tf.train.CheckpointManager(ckpt, './tf_ckpts', max_to_keep=3)
+# model = tf_mobilenetv2()
+# model.save('saved_model/mobilenetv2')
 
-ckpt.restore(manager.latest_checkpoint)
-if manager.latest_checkpoint:
-    print("Restored from {}".format(manager.latest_checkpoint))
-else:
-    print("Initializing from scratch.")
+model = tf.saved_model.load('saved_model/mobilenetv2')
 
-for epoch in range(EPOCHS):
-    print("\nStart of epoch %d" % (epoch,))
-    start_time = time.time()
+def test():
+    img = keras.preprocessing.image.load_img(
+        './data/traffic-sign/test-clean/1/00792.png', target_size=(32, 32)
+    )
+    img_array = keras.preprocessing.image.img_to_array(img)
+    normalization_layer = layers.experimental.preprocessing.Rescaling(1./255)
+    image_array = normalization_layer(img_array)
 
-    step = 0
-    for (images, labels) in iterator:
-        # Log every 200 batches.
-        if step % 200 == 0:
-            print("Seen so far: %d samples" % ((step + 1) * 64))
+    img_array = tf.expand_dims(img_array, 0) # Create a batch
 
-        loss = train_step(images, labels, optimizer)
-        ckpt.step.assign_add(1)
-        step = step+1
+    print(f'img shape: {img_array.shape}')
 
-        if int(ckpt.step) % 10 == 0:
-            save_path = manager.save()
-            print("Saved checkpoint for step {}: {}".format(int(ckpt.step), save_path))
-            print("loss {:1.2f}".format(loss.numpy()))
+    #predictions = model.predict(img_array)
+    predictions = model(img_array, training=False)
+    print(predictions)
 
-    for test_images, test_labels in test_ds:
-        test_step(test_images, test_labels)
+    sign = pd.read_csv('signnames.csv')
+    sign_names = sign['SignName']
 
-    # Display metrics at the end of each epoch.
-    template = 'Epoch: [{}/{}], Loss: {}, Accuracy: {}, Test Loss: {}, Test Accuracy: {}'
-    print(template.format(epoch+1,
-                          EPOCHS,
-                          train_loss.result(),
-                          train_accuracy.result()*100,
-                          test_loss.result(),
-                          test_accuracy.result()*100))
+    print(
+        "This image most likely belongs to {} with a {:.2f} percent confidence."
+        .format(sign_names[np.argmax(predictions)], 100 * np.max(predictions))
+    )
+
+test()
