@@ -14,9 +14,10 @@ from utils.rectangle import Rectangle
 class DetectedObject:
     class_name: str
     class_id: int
+    tensorflow_class: dict
     score: int
     detection_boxes: list
-    tensorflow_class: dict
+    detection_rectangle: Rectangle
 
 
 @dataclass
@@ -50,12 +51,15 @@ class DetectedObjects:
         return self._compare_objects(all_objects, compare)
 
 
-def is_there_any_collision(current_object: DetectedObject, another_object: DetectedObject) -> bool:
-    person_box = current_object.detection_boxes
-    other_person_box = another_object.detection_boxes
+def is_collision(current_object: DetectedObject, another_object: DetectedObject) -> bool:
+    # person_box = current_object.detection_boxes
+    # other_person_box = another_object.detection_boxes
 
-    object_r = Rectangle(person_box[0], person_box[1], person_box[2], person_box[3])
-    other_person_r = Rectangle(other_person_box[0], other_person_box[1], other_person_box[2], other_person_box[3])
+    # object_r = Rectangle(person_box[0], person_box[1], person_box[2], person_box[3])
+    # other_person_r = Rectangle(other_person_box[0], other_person_box[1], other_person_box[2], other_person_box[3])
+
+    object_r = current_object.detection_rectangle
+    other_person_r = another_object.detection_rectangle
 
     is_intersect = object_r.is_intersect(other_person_r)
 
@@ -67,17 +71,21 @@ def is_there_any_collision(current_object: DetectedObject, another_object: Detec
 
         # print(f'{threshold} {intersection.area}')
         if intersection.area > threshold:
-            print('collision')
             return True
 
     return False
 
 
-with open('car-crash.jpg.json', 'r') as f:
-    result = json.loads(f.read())
-    classes = result['detection_classes']
-    scores = result['detection_scores']
-    boxes = result['detection_boxes']
+@dataclass
+class TensorflowResults:
+    classes: any
+    scores: any
+    boxes: any
+
+def organize_detections(result: TensorflowResults) -> Dict[str, List[DetectedObject]]:
+    classes = result.classes
+    scores = result.scores
+    boxes = result.boxes
 
     min_score_thresh = .5
 
@@ -91,30 +99,69 @@ with open('car-crash.jpg.json', 'r') as f:
             continue
 
         class_name = category_index[class_id]['name']
-        detected = DetectedObject(class_name, class_id, score, box, category_index[class_id])
+
+        rectangle = Rectangle(box[0], box[1], box[2], box[3])
+        detected = DetectedObject(class_name, class_id, category_index[class_id], score, box, rectangle)
         detected_objects[class_name].append(detected)
 
-    objects = DetectedObjects(detected_objects)
-    results = objects.compare_specific_objects('car', is_there_any_collision)
-    print(results)
+    return detected_objects
 
-    result = results[0][0]
+with open('car-crash.jpg.json', 'r') as f:
+    result = json.loads(f.read())
+    classes = result['detection_classes']
+    scores = result['detection_scores']
+    boxes = result['detection_boxes']
+
+    result = TensorflowResults(classes, scores, boxes)
+
+    detected_objects = organize_detections(result)
+    # print(f'detected_objects = {detected_objects}')
+
+    cars: List[DetectedObject] = detected_objects.get('car')
+
+    if cars is None:
+        print('TODO: stop here')
+
+    """
+    Algorithm: loop over boxes
+    -> you have one box, you have to test if it overlaps with any other box, so you loop over all boxes but not over the current one.
+    -> you make rectangles from boxes and test if it overlaps.
+    """
+    object_combinations = combinations(cars, 2)
+
+    results = []
+    for current_object, to_compare in object_combinations:
+        if is_collision(current_object, to_compare):
+            results.append([current_object, to_compare])
+
+    car_collisions = results[0]
+
+    first_car = car_collisions[0]
+    full_rectangle = first_car
+
+    for car_collision in car_collisions[1:]:
+        # merge Rectangles to create a huge one :)
+        min_x = min(full_rectangle.detection_rectangle.min_x, car_collision.detection_rectangle.min_x)
+        max_x = max(full_rectangle.detection_rectangle.max_x, car_collision.detection_rectangle.max_x)
+        min_y = min(full_rectangle.detection_rectangle.min_y, car_collision.detection_rectangle.min_y)
+        max_y = max(full_rectangle.detection_rectangle.max_y, car_collision.detection_rectangle.max_y)
+
+        full_rectangle = Rectangle(min_x, min_y, max_x, max_y)
+
+    print(f'full_rectangle={full_rectangle}')
 
     image_np = np.array(Image.open('./car-crash-visualize.jpg'))
 
-    # Visualization of the results of a detection.
+    # # Visualization of the results of a detection.
     vis_util.visualize_boxes_and_labels_on_image_array(
         image_np,
-        np.array([result.detection_boxes]),
-        np.array([result.class_id]),
-        np.array([result.score]),
-        result.tensorflow_class,
+        np.array([full_rectangle.bounding_box]),
+        np.array([first_car.class_id]),
+        np.array([first_car.score]),
+        first_car.tensorflow_class,
         None,
         use_normalized_coordinates=True,
         line_thickness=8)
 
     result = Image.fromarray(image_np)
     result.save("something.jpg", "JPEG")
-
-    # persons: List[DetectedObject] = detected_objects.get('car')
-
