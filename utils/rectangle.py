@@ -14,6 +14,10 @@ class Rectangle:
 
         return True
 
+    @property
+    def bounding_box(self):
+        return [self.min_x, self.min_y, self.max_x, self.max_y]
+
     def __and__(self, other):
         if not self.is_intersect(other):
             return Rectangle()
@@ -35,7 +39,7 @@ class Rectangle:
     union = __or__
 
     def __str__(self):
-        return 'Rectangle({self.min_x},{self.max_x},{self.min_y},{self.max_y})'.format(self=self)
+        return 'Rectangle({self.min_x},{self.min_y},{self.max_x},{self.max_y})'.format(self=self)
 
     @property
     def area(self):
