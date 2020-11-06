@@ -60,39 +60,9 @@ optimizer = tf.keras.optimizers.Adam(learning_rate = LEARNING_RATE)
 loss_fn = tf.keras.losses.SparseCategoricalCrossentropy()
 
 # Prepare the metrics for train & test
-train_loss = tf.keras.metrics.Mean(name='train_loss')
-train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(
-    name='train_accuracy')
-
 test_loss = tf.keras.metrics.Mean(name='test_loss')
 test_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(
     name='test_accuracy')
-
-
-@tf.function
-def train_step(images, labels, optimizer):
-    with tf.GradientTape() as tape:
-        # Logits for this minibatch
-        logits = model(images, training=True)
-        loss = loss_fn(labels, logits)
-
-    gradients = tape.gradient(loss, model.trainable_variables)
-    optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-
-    train_loss(loss)
-    train_accuracy(labels, logits)
-
-    return loss
-
-
-@tf.function
-def test_step(images, labels):
-    predictions = model(images, training=False)
-    print(f'predictions={predictions} labels={labels}')
-    t_loss = loss_fn(labels, predictions)
-
-    test_loss(t_loss)
-    test_accuracy(labels, predictions)
 
 
 def tf_mobilenetv2():

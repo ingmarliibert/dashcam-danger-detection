@@ -6,7 +6,7 @@ from object_detection.utils import visualization_utils as vis_util
 from PIL import Image
 
 
-def run_inference_for_single_image(model, image):
+def run_inference_for_single_image(model, image: np.array):
     utils_ops.tf = tf.compat.v1
 
     image = np.asarray(image)
