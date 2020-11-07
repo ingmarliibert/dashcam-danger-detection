@@ -15,7 +15,6 @@ utils_ops.tf = tf.compat.v1
 # PATH_TO_TEST_IMAGES_DIR = pathlib.Path('models/research/object_detection/test_images')
 PATH_TO_TEST_IMAGES_DIR = pathlib.Path('./')
 TEST_IMAGE_PATHS = sorted(list(PATH_TO_TEST_IMAGES_DIR.glob("car-crash.jpg")))
-
 object_detection = object_detection_factory()
 object_detection_visualize = object_detection_visualize_factory()
 
