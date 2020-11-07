@@ -8,6 +8,10 @@ pip install --requirement ./requirements.txt
 
 Or any virtualenv or something that you want.
 
+if you have trouble installing scikit with pycharm :
+```
+python -m pip install scikit-learn==0.23.2
+```
 ## Tensorflow
 Follow instructions here:
 https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/tf2.md
