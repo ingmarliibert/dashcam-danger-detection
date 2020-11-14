@@ -2,3 +2,5 @@ models/*
 .idea
 __pycache__
 data
+venv/*
+
