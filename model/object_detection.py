@@ -43,7 +43,7 @@ def organize_detections(result: TensorflowResults) -> Dict[str, List[DetectedObj
         if score < min_score_thresh:
             continue
 
-        class_name = category_index[class_id]['name']
+        class_name = category_index[class_id]['display_name']
 
         rectangle = Rectangle(box[0], box[1], box[2], box[3])
         detected = DetectedObject(class_name, class_id, category_index[class_id], score, box, rectangle)
