@@ -74,6 +74,8 @@ def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap):
 def process_lines(img, lines):
     # these variables represent the y-axis coordinates to which
     # the line will be extrapolated to
+    if lines is None:
+        return
     ymin_global = img.shape[0]
     ymax_global = img.shape[0]
 
@@ -193,7 +195,8 @@ def find_lines(image):
     return lines
 
 
-IMAGE_FILE = 'road-line-detection-0.jpeg'
-image = cv2.imread(IMAGE_FILE)
-lines = find_lines(image)
-print(lines)
+if __name__ == '__main__':
+    IMAGE_FILE = 'road-line-detection-0.jpeg'
+    image = cv2.imread(IMAGE_FILE)
+    lines = find_lines(image)
+    print(lines)
