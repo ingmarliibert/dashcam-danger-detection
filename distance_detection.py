@@ -7,7 +7,7 @@ from utils.rectangle import Rectangle
 
 
 def get_distance_and_object(detections: Dict[str, List[DetectedObject]], lines) -> (float, DetectedObject):
-    relevant_labels = ['car', 'motorcycle', 'bus', 'truck', ]
+    relevant_labels = ['car', 'motorcycle', 'bus', 'truck']
 
     minimum = [float('inf'), None]
     for label in detections:
@@ -23,15 +23,6 @@ def get_distance_and_object(detections: Dict[str, List[DetectedObject]], lines) 
                     minimum[1] = object
 
     return minimum
-
-
-def calculate_position(bbox):
-    transform_matrix = None
-    warped_size = None
-    pix_per_meter = None
-    pos = np.array((bbox[0] / 2 + bbox[2] / 2, bbox[3])).reshape(1, 1, -1)
-    dst = cv2.perspectiveTransform(pos, transform_matrix).reshape(-1, 1)
-    return np.array((warped_size[1] - dst[1]) / pix_per_meter[1])
 
 
 def is_in_lane(object: DetectedObject, lines):
