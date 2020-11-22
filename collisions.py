@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from itertools import combinations, chain
 from typing import Dict, List, Callable
 
-from model.object_detection import DetectedObject
+from model.object_detect import DetectedObject
 from utils.rectangle import Rectangle
 
 

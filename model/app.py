@@ -4,8 +4,8 @@ Model instance to our specific application.
 import tensorflow as tf
 from object_detection.utils import label_map_util
 
-from model.object_detection import object_detection, object_detection_visualize
-from model.utils import load_model
+from model.object_detect import object_detection, object_detection_visualize
+from model.util import load_model
 from functools import partial
 
 # Patch the location of gfile

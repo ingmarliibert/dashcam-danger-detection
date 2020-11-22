@@ -192,7 +192,7 @@ def find_lines(image):
     lines = hough_lines(masked_image, rho, theta, threshold, min_line_len,
                         max_line_gap)
 
-    return lines
+    return lines, True
 
 
 if __name__ == '__main__':
