@@ -53,7 +53,8 @@ def is_collision(current_object: DetectedObject, another_object: DetectedObject)
         intersection = object_r & other_person_r
         print(f'intersection = {intersection}')
 
-        threshold = 0.03 * object_r.area
+        # increase threshold to get stronger, they will have to collide more to get detected as collision
+        threshold = 0.04 * object_r.area
 
         # print(f'{threshold} {intersection.area}')
         if intersection.area > threshold:

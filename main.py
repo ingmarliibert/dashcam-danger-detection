@@ -65,7 +65,11 @@ def run():
         ret, frame = video.read()
         if not ret:
             break
+
         tf_results, results = object_detection(frame)
+
+        object_detection_visualize(tf_results, frame)
+
         collisions = get_collisions(results)
         lines, in_lines = find_lines(frame)
         distance, closest_object = get_distance_and_object(results, lines)

@@ -1,6 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from object_detection.utils import label_map_util
 
@@ -27,10 +27,14 @@ class DetectedObject:
     detection_rectangle: Rectangle
 
 
-def organize_detections(result: TensorflowResults) -> Dict[str, List[DetectedObject]]:
+def organize_detections(result: TensorflowResults) -> Tuple[TensorflowResults, Dict[str, List[DetectedObject]]]:
     classes = result.classes
     scores = result.scores
     boxes = result.boxes
+
+    filtered_classes = []
+    filtered_scores = []
+    filtered_boxes = []
 
     min_score_thresh = .6
 
@@ -43,13 +47,18 @@ def organize_detections(result: TensorflowResults) -> Dict[str, List[DetectedObj
         if score < min_score_thresh:
             continue
 
+        filtered_classes.append(class_id)
+        filtered_scores.append(score)
+        filtered_boxes.append(box)
+
         class_name = category_index[class_id]['name']
 
         rectangle = Rectangle(box[0], box[1], box[2], box[3])
         detected = DetectedObject(class_name, class_id, category_index[class_id], score, box, rectangle)
+
         detected_objects[class_name].append(detected)
 
-    return detected_objects
+    return TensorflowResults(np.asarray(filtered_classes), np.asarray(filtered_scores), np.asarray(filtered_boxes)), detected_objects
 
 
 def object_detection(detection_model, image: np.array):
@@ -60,7 +69,8 @@ def object_detection(detection_model, image: np.array):
     boxes = result['detection_boxes']
 
     tf_results = TensorflowResults(classes, scores, boxes)
-    return tf_results, organize_detections(tf_results)
+
+    return organize_detections(tf_results)
 
 def object_detection_visualize(category_index, objects: TensorflowResults, image: np.array):
 
