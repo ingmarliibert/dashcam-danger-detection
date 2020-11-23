@@ -61,7 +61,7 @@ def detect_circles(frame, original):
 
             i = i+1
 
-
+r
 def shapes(cnts, img):
     for cnt in cnts:
         epsilon = 0.1 * cv2.arcLength(cnt, True)
