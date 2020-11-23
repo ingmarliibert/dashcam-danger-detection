@@ -1,5 +1,4 @@
 import cv2
-import matplotlib.pyplot as plt
 import numpy as np
 
 """
@@ -68,21 +67,44 @@ def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap):
     """
     lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]),
                             minLineLength=min_line_len, maxLineGap=max_line_gap)
-    line_img = np.zeros((*img.shape, 3), dtype=np.uint8)
 
-    draw_lines(line_img, lines)
-    return line_img
+    processed_lines = process_lines(img, lines)
+    return processed_lines
 
 
-# 5. Drawing lines
-def draw_lines(img, lines, color=[0, 0, 255], thickness=12):
+def is_crossing(image, coordinates, sensitivity=0.6):
     """
-    This function draws `lines` with `color` and `thickness`.
+    Detects, whether the vehicle is crossing a lane or not.
+    @param image: video frame
+    @param coordinates: lane corner coordinates
+    @param sensitivity: when the function starts telling about lane change
+    @return: Boolean, is the car between two lanes or not.
     """
-    imshape = img.shape
+    # [[(upper_left_x, ymin_global), (lower_left_x, ymax_global)],
+    # [(upper_right_x, ymin_global), (lower_right_x, ymax_global)]]
 
+    x_left = coordinates[0][1][0]
+    x_right = coordinates[1][1][0]
+
+    height, width, _ = image.shape
+
+    if not coordinates:  # We want little false positives
+        return True
+
+    if x_left > (1 - sensitivity) * width:  # Changing lane to the left
+        return False
+    if x_right < sensitivity * width:  # Changing lane to the right
+        return False
+
+    # When no lane change detected
+    return True
+
+
+def process_lines(img, lines):
     # these variables represent the y-axis coordinates to which
     # the line will be extrapolated to
+    if lines is None:
+        return
     ymin_global = img.shape[0]
     ymax_global = img.shape[0]
 
@@ -127,14 +149,29 @@ def draw_lines(img, lines, color=[0, 0, 255], thickness=12):
         upper_right_x = int((ymin_global - right_intercept) / right_mean_grad)
         lower_right_x = int((ymax_global - right_intercept) / right_mean_grad)
 
-        cv2.line(img, (upper_left_x, ymin_global),
-                 (lower_left_x, ymax_global), color, thickness)
-        cv2.line(img, (upper_right_x, ymin_global),
-                 (lower_right_x, ymax_global), color, thickness)
+        return [[(upper_left_x, ymin_global), (lower_left_x, ymax_global)],
+                [(upper_right_x, ymin_global), (lower_right_x, ymax_global)]]
+
+
+# 5. Drawing lines
+def draw_lines(img, lines, color=(0, 0, 255), thickness=12):
+    """
+    This function draws `lines` with `color` and `thickness`.
+    """
+    processed_lines = process_lines(img, lines)
+    if processed_lines is None:
+        return
+    (upper_left_x, ymin_global), (lower_left_x, ymax_global) = processed_lines[0]
+    (upper_right_x, ymin_global), (lower_right_x, ymax_global) = processed_lines[1]
+
+    cv2.line(img, (upper_left_x, ymin_global),
+             (lower_left_x, ymax_global), color, thickness)
+    cv2.line(img, (upper_right_x, ymin_global),
+             (lower_right_x, ymax_global), color, thickness)
 
 
 # 6. Add lines to the input image
-def weighted_img(img, initial_img, α=0.8, β=1., λ=0.):
+def weighted_img(img, initial_img, alpha=0.8, beta=1., llambda=0.):
     """
     `img` is the output of the hough_lines(), An image with lines drawn on it.
     Should be a blank image (all black) with lines drawn on it.
@@ -146,7 +183,7 @@ def weighted_img(img, initial_img, α=0.8, β=1., λ=0.):
     initial_img * α + img * β + λ
     NOTE: initial_img and img must be the same shape!
     """
-    return cv2.addWeighted(initial_img, α, img, β, λ)
+    return cv2.addWeighted(initial_img, alpha, img, beta, llambda)
 
 
 # 7. Combine everything
@@ -178,20 +215,19 @@ def find_lines(image):
     rho = 1
     theta = np.pi / 180
     threshold = 30
-    min_line_len = 20
-    max_line_gap = 20
+    min_line_len = 10
+    max_line_gap = 10
 
-    houged = hough_lines(masked_image, rho, theta, threshold, min_line_len,
-                         max_line_gap)
+    lines = hough_lines(masked_image, rho, theta, threshold, min_line_len,
+                        max_line_gap)
 
-    # outline the input image
-    colored_image = weighted_img(houged, image)
-    return colored_image, pts
+    is_crossing_flag = is_crossing(image, lines)
+
+    return lines, is_crossing_flag
 
 
-IMAGE_FILE = 'road-line-detection-0.jpeg'
-image = cv2.imread(IMAGE_FILE)
-processed_image, points = find_lines(image)
-plt.imshow(cv2.cvtColor(processed_image, cv2.COLOR_BGR2RGB))
-plt.show()
-
+if __name__ == '__main__':
+    IMAGE_FILE = 'road-line-detection-0.jpeg'
+    image = cv2.imread(IMAGE_FILE)
+    lines = find_lines(image)
+    print(lines)
