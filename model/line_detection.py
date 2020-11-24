@@ -1,3 +1,5 @@
+import warnings
+
 import cv2
 import numpy as np
 
@@ -6,6 +8,8 @@ This is the traditional, old-fashioned way of detecting road lines using OpenCV.
 Pros: no need for additional libraries, easy to implement and use
 Cons: need to set area, where the lanes are, not as accurate as state-of-the-art neural nets.
 """
+
+warnings.filterwarnings("ignore", category=np.RankWarning)
 
 
 # Implemented using https://www.kdnuggets.com/2017/07/road-lane-line-detection-using-computer-vision-models.html/2 as base
@@ -72,7 +76,7 @@ def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap):
     return processed_lines
 
 
-def is_crossing(image, coordinates, sensitivity=0.6):
+def is_crossing(image, coordinates, sensitivity=0.5):
     """
     Detects, whether the vehicle is crossing a lane or not.
     @param image: video frame
@@ -86,14 +90,22 @@ def is_crossing(image, coordinates, sensitivity=0.6):
     x_left = coordinates[0][1][0]
     x_right = coordinates[1][1][0]
 
+    # print("is_crossing", x_left, x_right)
+
     height, width, _ = image.shape
+
+    # print("sensitivity*width", sensitivity * width)
+    # print("Relative placement of the left lane", x_left / width)
+    # print("Relative placement of the right lane", x_right / width)
 
     if not coordinates:  # We want little false positives
         return True
 
-    if x_left > (1 - sensitivity) * width:  # Changing lane to the left
+    if x_left < 400:  # Changing lane to the left
+        print("Left lane change")
         return False
-    if x_right < sensitivity * width:  # Changing lane to the right
+    if x_right > 350:  # Changing lane to the right
+        print("Right lane change")
         return False
 
     # When no lane change detected
