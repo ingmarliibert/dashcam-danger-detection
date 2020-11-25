@@ -1,7 +1,4 @@
-import warnings
-
 import cv2
-import matplotlib.pyplot as plt
 import numpy as np
 
 """
@@ -9,8 +6,6 @@ This is the traditional, old-fashioned way of detecting road lines using OpenCV.
 Pros: no need for additional libraries, easy to implement and use
 Cons: need to set area, where the lanes are, not as accurate as state-of-the-art neural nets.
 """
-
-warnings.filterwarnings("ignore", category=np.RankWarning)
 
 
 # Implemented using https://www.kdnuggets.com/2017/07/road-lane-line-detection-using-computer-vision-models.html/2 as base
@@ -128,7 +123,6 @@ def process_lines(img, lines):
     all_right_grad = []
     all_right_y = []
     all_right_x = []
-
     for line in lines:
         for x1, y1, x2, y2 in line:
             gradient, intercept = np.polyfit((x1, x2), (y1, y2), 1)
@@ -165,13 +159,10 @@ def process_lines(img, lines):
 
 
 # 5. Drawing lines
-def draw_lines(img, lines, color=(0, 0, 255), thickness=12):
+def draw_lines(img, processed_lines, color=(0, 0, 255), thickness=5):
     """
     This function draws `lines` with `color` and `thickness`.
     """
-    processed_lines = process_lines(img, lines)
-    if processed_lines is None:
-        return
     (upper_left_x, ymin_global), (lower_left_x, ymax_global) = processed_lines[0]
     (upper_right_x, ymin_global), (lower_right_x, ymax_global) = processed_lines[1]
 
@@ -240,5 +231,8 @@ def find_lines(image):
 if __name__ == '__main__':
     IMAGE_FILE = 'road-line-detection-0.jpeg'
     image = cv2.imread(IMAGE_FILE)
-    lines = find_lines(image)
+    lines, is_crossing = find_lines(image)
+    draw_lines(image, lines)
+    cv2.imshow("", image)
+    cv2.waitKey(0)
     print(lines)

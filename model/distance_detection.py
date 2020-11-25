@@ -14,8 +14,6 @@ def get_distance_and_object(detections: Dict[str, List[DetectedObject]], lines) 
         if label in relevant_labels:
             objects = detections[label]
             for object in objects:
-                if not is_in_lane(object, lines):
-                    continue
                 distance = get_distance(object.detection_rectangle)
 
                 if distance < minimum[0]:
@@ -39,7 +37,7 @@ def is_in_lane(object: DetectedObject, lines):
 
 
 def get_distance(car_bounding_box: Rectangle):
-    focal_length = 1
+    focal_length = 0.5
     avg_car_width = 2
     pixel_width = car_bounding_box.max_x - car_bounding_box.min_x
     distance = (avg_car_width * focal_length) / pixel_width

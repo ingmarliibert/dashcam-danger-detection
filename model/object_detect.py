@@ -1,13 +1,13 @@
 from collections import defaultdict
-from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
+import numpy as np
+from dataclasses import dataclass
 from object_detection.utils import label_map_util
+from object_detection.utils import visualization_utils as vis_util
 
 from model.util import run_inference_for_single_image
 from utils.rectangle import Rectangle
-from object_detection.utils import visualization_utils as vis_util
-import numpy as np
 
 
 @dataclass
@@ -58,7 +58,8 @@ def organize_detections(result: TensorflowResults) -> Tuple[TensorflowResults, D
 
         detected_objects[class_name].append(detected)
 
-    return TensorflowResults(np.asarray(filtered_classes), np.asarray(filtered_scores), np.asarray(filtered_boxes)), detected_objects
+    return TensorflowResults(np.asarray(filtered_classes), np.asarray(filtered_scores),
+                             np.asarray(filtered_boxes)), detected_objects
 
 
 def object_detection(detection_model, image: np.array):
@@ -72,8 +73,8 @@ def object_detection(detection_model, image: np.array):
 
     return organize_detections(tf_results)
 
-def object_detection_visualize(category_index, objects: TensorflowResults, image: np.array):
 
+def object_detection_visualize(category_index, objects: TensorflowResults, image: np.array, line_thickness=5):
     # Visualization of the results of a detection.
     vis_util.visualize_boxes_and_labels_on_image_array(
         image,
@@ -84,6 +85,6 @@ def object_detection_visualize(category_index, objects: TensorflowResults, image
         # instance_masks=output_dict.get('detection_masks_reframed', None),
         instance_masks=None,
         use_normalized_coordinates=True,
-        line_thickness=8)
+        line_thickness=line_thickness)
 
     return image
