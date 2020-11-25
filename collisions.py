@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from itertools import combinations, chain
 from typing import Dict, List, Callable
 
-from model.object_detection import DetectedObject
+from model.object_detect import DetectedObject
 from utils.rectangle import Rectangle
 
 
@@ -51,9 +51,10 @@ def is_collision(current_object: DetectedObject, another_object: DetectedObject)
 
     if is_intersect:
         intersection = object_r & other_person_r
-        print(f'intersection = {intersection}')
+        # print(f'intersection = {intersection}')
 
-        threshold = 0.03 * object_r.area
+        # increase threshold to get stronger, they will have to collide more to get detected as collision
+        threshold = 0.04 * object_r.area
 
         # print(f'{threshold} {intersection.area}')
         if intersection.area > threshold:
