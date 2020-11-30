@@ -2,6 +2,7 @@ import warnings
 
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
 
 """
 This is the traditional, old-fashioned way of detecting road lines using OpenCV.
@@ -72,8 +73,8 @@ def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap):
     lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]),
                             minLineLength=min_line_len, maxLineGap=max_line_gap)
 
-    processed_lines = process_lines(img, lines)
-    return processed_lines
+    #processed_lines = process_lines(img, lines)
+    return lines
 
 
 def is_crossing(image, coordinates, sensitivity=0.5):
@@ -87,6 +88,12 @@ def is_crossing(image, coordinates, sensitivity=0.5):
     # [[(upper_left_x, ymin_global), (lower_left_x, ymax_global)],
     # [(upper_right_x, ymin_global), (lower_right_x, ymax_global)]]
 
+    if not coordinates:  # We want little false positives
+        return True
+
+    if len(coordinates) < 2:
+        print("Found only a single line.")
+        return True
     x_left = coordinates[0][1][0]
     x_right = coordinates[1][1][0]
 
@@ -98,8 +105,6 @@ def is_crossing(image, coordinates, sensitivity=0.5):
     # print("Relative placement of the left lane", x_left / width)
     # print("Relative placement of the right lane", x_right / width)
 
-    if not coordinates:  # We want little false positives
-        return True
 
     if x_left < 400:  # Changing lane to the left
         print("Left lane change")
@@ -131,6 +136,7 @@ def process_lines(img, lines):
     all_right_x = []
 
     for line in lines:
+        #print("line in process_lines", (line))
         for x1, y1, x2, y2 in line:
             gradient, intercept = np.polyfit((x1, x2), (y1, y2), 1)
             ymin_global = min(min(y1, y2), ymin_global)
@@ -156,11 +162,19 @@ def process_lines(img, lines):
 
     # Make sure we have some points in each lane line category
     if (len(all_left_grad) > 0) and (len(all_right_grad) > 0):
+        #print("ymin_global", all_left_grad)
         upper_left_x = int((ymin_global - left_intercept) / left_mean_grad)
         lower_left_x = int((ymax_global - left_intercept) / left_mean_grad)
         upper_right_x = int((ymin_global - right_intercept) / right_mean_grad)
         lower_right_x = int((ymax_global - right_intercept) / right_mean_grad)
 
+        #print("returning", [[(upper_left_x, ymin_global), (lower_left_x, ymax_global)],
+        #        [(upper_right_x, ymin_global), (lower_right_x, ymax_global)]])
+
+        if upper_right_x > 1080 or lower_right_x < 0: #impossible case
+            return None
+        if upper_left_x < 0 or lower_left_x > 1080:
+            return None
         return [[(upper_left_x, ymin_global), (lower_left_x, ymax_global)],
                 [(upper_right_x, ymin_global), (lower_right_x, ymax_global)]]
 
@@ -170,11 +184,13 @@ def draw_lines(img, lines, color=(0, 0, 255), thickness=12):
     """
     This function draws `lines` with `color` and `thickness`.
     """
-    processed_lines = process_lines(img, lines)
-    if processed_lines is None:
+    #processed_lines = process_lines(img, lines)
+    if lines is None:
         return
-    (upper_left_x, ymin_global), (lower_left_x, ymax_global) = processed_lines[0]
-    (upper_right_x, ymin_global), (lower_right_x, ymax_global) = processed_lines[1]
+    (upper_left_x, ymin_global), (lower_left_x, ymax_global) = lines[0]
+    (upper_right_x, ymin_global), (lower_right_x, ymax_global) = lines[1]
+
+    #print("draw_lines", lines)
 
     cv2.line(img, (upper_left_x, ymin_global),
              (lower_left_x, ymax_global), color, thickness)
@@ -212,16 +228,22 @@ def find_lines(image):
     maxThreshold = 200
     edgeDetectedImage = canny(gaussianBlur, minThreshold, maxThreshold)
 
+    #plt.imshow(edgeDetectedImage)
+    #plt.show()
+
     # apply mask
-    lowerLeftPoint = [130, 540]
-    upperLeftPoint = [410, 350]
-    upperRightPoint = [570, 350]
-    lowerRightPoint = [915, 540]
+    lowerLeftPoint = [250, 1000] #x, y
+    upperLeftPoint = [500, 600]
+    upperRightPoint = [1000, 600]
+    lowerRightPoint = [1500, 1080]
 
     pts = np.array([[lowerLeftPoint, upperLeftPoint, upperRightPoint,
                      lowerRightPoint]], dtype=np.int32)
 
     masked_image = region_of_interest(edgeDetectedImage, pts)
+
+    #plt.imshow(masked_image)
+    #plt.show()
 
     # hough lines
     rho = 1
@@ -233,13 +255,59 @@ def find_lines(image):
     lines = hough_lines(masked_image, rho, theta, threshold, min_line_len,
                         max_line_gap)
 
-    is_crossing_flag = is_crossing(image, lines)
+    #print("from hough_lines", lines, ".")
 
-    return lines, is_crossing_flag
+    processed_lines = process_lines(image, lines)
+
+    #print("from process_lines in find_lines", processed_lines)
+
+    is_crossing_flag = is_crossing(image, processed_lines)
+
+    #print("From hough_lines", lines)
+
+    return processed_lines, is_crossing_flag
 
 
 if __name__ == '__main__':
+
+    """
     IMAGE_FILE = 'road-line-detection-0.jpeg'
     image = cv2.imread(IMAGE_FILE)
     lines = find_lines(image)
     print(lines)
+    """
+
+    VIDEO_FILE = "4-line-crossing.mp4"
+
+    cap = cv2.VideoCapture(VIDEO_FILE)
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+    frame_counter = 0
+
+    out = cv2.VideoWriter("output.avi", fourcc=cv2.VideoWriter_fourcc('M','J','P','G'), fps=30,
+                          frameSize=(width, height))
+
+    while cap.isOpened():
+        frame_counter += 1
+        print("Examining frame", frame_counter)
+        ret, frame = cap.read()
+        if not ret: #end of the video
+            break
+
+        #gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        lines, is_crossing_flag = find_lines(frame)
+
+        #print("lines from find_lines", lines)
+
+        draw_lines(frame, lines)
+
+        #cv2.imshow('frame', frame)
+        out.write(frame)
+        if cv2.waitKey(60) & 0xFF == ord('q'):
+            break
+
+    out.release()
+    cap.release()
+    cv2.destroyAllWindows()
