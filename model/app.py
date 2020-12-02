@@ -1,12 +1,13 @@
 """
 Model instance to our specific application.
 """
+from functools import partial
+
 import tensorflow as tf
 from object_detection.utils import label_map_util
 
-from model.object_detection import object_detection, object_detection_visualize
-from model.utils import load_model
-from functools import partial
+from model.object_detect import object_detection, object_detection_visualize
+from model.util import load_model
 
 # Patch the location of gfile
 tf.gfile = tf.io.gfile
@@ -22,11 +23,13 @@ def tf_object_detection_factory():
 
     return detection_model, category_index
 
+
 detection_model, category_index = tf_object_detection_factory()
+
 
 def object_detection_factory():
     return partial(object_detection, detection_model)
 
+
 def object_detection_visualize_factory():
     return partial(object_detection_visualize, category_index)
-
