@@ -31,14 +31,15 @@ class TrafficSign:
         self.class_names = class_names
         self.class_indexes = class_indexes
 
-    def inception(self, frame: np.array) -> InceptionResult:
-        # img = frame
+    def inception(self, frame: np.array, transform_frame = True) -> InceptionResult:
+        if transform_frame is True:
+            img = Image.fromarray(frame).resize(
+                (img_width, img_height), Image.BILINEAR)
 
-        img = Image.fromarray(frame).resize(
-            (img_width, img_height), Image.BILINEAR)
-
-        if img.mode != 'RGB':
-            img = img.convert('RGB')
+            if img.mode != 'RGB':
+                img = img.convert('RGB')
+        else:
+            img = frame
 
         img_array = keras.preprocessing.image.img_to_array(img)
         img_array = tf.expand_dims(img_array, 0)  # Create a batch
@@ -64,9 +65,9 @@ def traffic_sign_factory():
     sign = pd.read_csv('signnames.csv')
     class_names = sign['SignName']
 
-    model = tf.keras.models.load_model('saved_model/mobilenetv2-test2')
+    model = tf.keras.models.load_model('saved_model/traffic-sign-mobilenetv2')
 
-    with open('saved_model/mobilenetv2-test2/classes.json', 'r') as f:
+    with open('saved_model/traffic-sign-mobilenetv2/classes.json', 'r') as f:
         class_indexes = json.load(f)
 
     print(f'class_indexes = {class_indexes}')

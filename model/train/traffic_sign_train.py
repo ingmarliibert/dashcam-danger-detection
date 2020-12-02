@@ -157,13 +157,13 @@ def personal():
 
 
 model = tf_mobilenetv2()
-model.save('saved_model/mobilenetv2-test2')
+model.save('saved_model/traffic-sign-mobilenetv2')
 
-with open('saved_model/mobilenetv2-test2/classes.json', 'w') as f:
+with open('saved_model/traffic-sign-mobilenetv2/classes.json', 'w') as f:
     json.dump(class_names, f)
 
 #
-# model = tf.keras.models.load_model('saved_model/mobilenetv2-test2')
+# model = tf.keras.models.load_model('saved_model/traffic-sign-mobilenetv2')
 #
 # # model = personal()
 # # model.save('saved_model/personal')
