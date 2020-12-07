@@ -48,7 +48,7 @@ def detect_circles(frame, original):
 
             crop_img = original[(rectY - y_padding):(rectY + 2 * r) + y_padding,
                        (rectX - x_padding):(rectX + 2 * r) + x_padding]
-
+            # cv2.imshow("circle",crop_img)
             result = traffic_sign.inception(crop_img)
             print(result)
 
@@ -103,6 +103,7 @@ def shapes(cnts, img, original):
 
             # rectangle : x -> from min x point to max x (paddings ignored)
             crop_img = original[lower_y:upper_y,lower_x:upper_x]
+            cv2.imshow("detect", img)
             # cv2.imshow("cropped triangle", crop_img)
 
             result = traffic_sign.inception(crop_img)
@@ -114,7 +115,7 @@ def shapes(cnts, img, original):
         elif len(approx) == 4:
             cv2.putText(img, "Rectangle", (x, y), font, 1, (0))
 
-    print(triagleNB, " triangles found")
+    #print(triagleNB, " triangles found")
 
 # frame = cv2.imread('./france-paris-30-kph-sign.jpg')
 frame = cv2.imread('./traffic_sign2.jpg')
