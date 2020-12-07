@@ -20,16 +20,16 @@ font = cv2.FONT_HERSHEY_COMPLEX
 
 traffic_sign = traffic_sign_factory()
 
-def detect_circles(frame, original):
-    rows = frame.shape[0]
 
+def detect_circles(frame, original, params):
+    rows = frame.shape[0]
+    print("param for circle : ", params)
     # https://docs.opencv.org/3.4/d4/d70/tutorial_hough_circle.html
     circles = cv2.HoughCircles(frame, cv2.HOUGH_GRADIENT, 1, rows / 8,
-                               param1=100, param2=40, minRadius=20, maxRadius=80)
+                               param1=params[0], param2=params[1], minRadius=params[2], maxRadius=params[3])
 
     if circles is not None:
         circles = np.uint16(np.around(circles))
-
 
         i = 0
         for circle in circles[0, :]:
@@ -63,12 +63,12 @@ def detect_circles(frame, original):
             i = i + 1
 
 
-def shapes(cnts, img, original):
+def shapes(cnts, img, original, modifier):
     triagleNB = 0
-
+    print("modifier :", modifier)
     crop_img = img
     for cnt in cnts:
-        epsilon = 0.26 * cv2.arcLength(cnt, True) #0.1, 0.25 2 triangles (overlap), 0.26 1 triangle
+        epsilon = modifier * cv2.arcLength(cnt, True)  # 0.1, 0.25 2 triangles (overlap), 0.26 1 triangle
         approx = cv2.approxPolyDP(cnt, epsilon, True)
 
         area = cv2.contourArea(approx, False)
@@ -76,7 +76,7 @@ def shapes(cnts, img, original):
         if area < 200:
             continue
 
-        #print(f'approx={approx} \n area={area}')
+        # print(f'approx={approx} \n area={area}')
 
         x = approx.ravel()[0]
         y = approx.ravel()[1]
@@ -102,7 +102,7 @@ def shapes(cnts, img, original):
             upper_y = (np.amax(ys) + y_padding)
 
             # rectangle : x -> from min x point to max x (paddings ignored)
-            crop_img = original[lower_y:upper_y,lower_x:upper_x]
+            crop_img = original[lower_y:upper_y, lower_x:upper_x]
             cv2.imshow("detect", img)
             # cv2.imshow("cropped triangle", crop_img)
 
@@ -115,13 +115,31 @@ def shapes(cnts, img, original):
         elif len(approx) == 4:
             cv2.putText(img, "Rectangle", (x, y), font, 1, (0))
 
-    #print(triagleNB, " triangles found")
+    # print(triagleNB, " triangles found")
 
+
+########################### MAIN ##########################
 # frame = cv2.imread('./france-paris-30-kph-sign.jpg')
-frame = cv2.imread('./traffic_sign2.jpg')
+
+# UNCOMMENT TO SWITCH IMG
+url_img = './traffic_sign2.jpg'
+#url_img = './roadsigns_1.png'
+frame = cv2.imread(url_img)
+
+# FINE TUNING ======================================
+# Modifier for epsilon parameter in shapes
+eps_shapes_modifier = 0.26
+# list for param1=100, param2=40, minRadius=20, maxRadius=80
+params_circle = (100, 40, 20, 80)
+
+if (url_img == "./traffic_sign2.jpg"):
+    eps_shapes_modifier = 0.26
+    params_circle = (100, 40, 20, 80)
+elif (url_img == "./roadsigns_1.png"):
+    eps_shapes_modifier = 0.9
+    params_circle = (20, 80, 14, 180) # 20 80 20 180
 
 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
 gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
 img = cv2.medianBlur(gray, 5)
 
@@ -133,17 +151,22 @@ _, threshold = cv2.threshold(blur, 90, 255, cv2.THRESH_BINARY)
 
 cv2.imshow('cleaned image', blur)
 
-detect_circles(blur, frame)
+detect_circles(blur, frame, params_circle)
+cv2.imshow('detected circles', frame)
+cv2.waitKey()
 
 # _, threshold = cv2.threshold(blur, 90, 255, cv2.THRESH_BINARY)
 # cv2.imshow('threshold', threshold)
 contours, _ = cv2.findContours(threshold, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-shapes(contours, frame, img)
 
-while True:
-    cv2.imshow('detected circles', frame)
-    k = cv2.waitKey(0)
-    if k == 27:  # Esc key to stop
-        break
+shapes(contours, frame, img, eps_shapes_modifier)
+cv2.imshow('detected shapes', frame)
+cv2.waitKey()
 
-cv2.destroyAllWindows()
+# while True:
+#     cv2.imshow('detected circles', frame)
+#     k = cv2.waitKey(0)
+#     if k == 27:  # Esc key to stop
+#         break
+
+# cv2.destroyAllWindows()
