@@ -75,12 +75,12 @@ def display_warnings(frame, results, collisions, is_crossing, distance):
 
 
 def run():
-    video = cv2.VideoCapture("1.mp4")
+    video = cv2.VideoCapture("2.mp4")
     while video.isOpened():
         ret, frame = video.read()
         if not ret:
             break
-        cv2.imshow("", frame)
+        #cv2.imshow("", frame)
 
         tf_results, results = object_detection(frame)
         collisions = get_collisions(results)
@@ -92,7 +92,7 @@ def run():
 
         display_warnings(frame, results, collisions, is_crossing, distance)
 
-        cv2.imshow("", frame)
+        cv2.imshow("dashcam", cv2.resize(frame,(1280,720)))
         cv2.waitKey(1)
 
 
