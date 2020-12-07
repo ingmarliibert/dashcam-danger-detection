@@ -19,6 +19,8 @@ python -m pip install scikit-learn==0.23.2
 Install the [Traffic sign dataset](https://www.kaggle.com/meowmeowmeowmeowmeow/gtsrb-german-traffic-sign), unzip and put it in the folder `./data/traffic-sign`.
 
 
+Then, run the script `traffic_sign_data_cleaning.py`. This script will restructure the dataset to allow our models to work easier (it does some label to folder mapping).
+
 ## Tensorflow
 Follow instructions here:
 https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/tf2.md

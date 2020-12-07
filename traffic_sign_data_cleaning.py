@@ -7,7 +7,6 @@ TRAFFIC_SIGN_ROOT = './data/traffic-sign'
 TRAIN_ROOT = './data/traffic-sign/train'
 TEST_CLEAN = './data/traffic-sign/test-clean'
 
-
 data_dir = pathlib.Path(TRAIN_ROOT)
 
 def reorganize_test_pictures():
