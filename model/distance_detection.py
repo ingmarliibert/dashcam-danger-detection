@@ -16,7 +16,7 @@ def get_distance_and_object(detections: Dict[str, List[DetectedObject]], lines) 
             for object in objects:
                 distance = get_distance(object.detection_rectangle)
 
-                if distance < minimum[0]:
+                if is_in_lane(object, lines) and distance < minimum[0]:
                     minimum[0] = distance
                     minimum[1] = object
 
