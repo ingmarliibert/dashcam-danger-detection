@@ -1,8 +1,11 @@
 import cv2
+import matplotlib
 import numpy as np
 from scipy.stats import itemfreq
 from model.traffic_sign import traffic_sign_factory
+import matplotlib.pyplot as plt
 
+matplotlib.use('TkAgg')
 
 def get_dominant_color(image, n_colors):
     pixels = np.float32(image).reshape((-1, 3))
@@ -17,8 +20,15 @@ def get_dominant_color(image, n_colors):
 
 
 font = cv2.FONT_HERSHEY_COMPLEX
-
+color = (0,0, 0)
 traffic_sign = traffic_sign_factory()
+
+def showImg(title,img):
+    frame = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    cv2.imshow(title,frame)
+    # plt.imshow(frame.astype("uint8"))
+    # plt.axis("off")
+    #cv2.waitKey()
 
 
 def detect_circles(frame, original, params):
@@ -49,6 +59,7 @@ def detect_circles(frame, original, params):
             crop_img = original[(rectY - y_padding):(rectY + 2 * r) + y_padding,
                        (rectX - x_padding):(rectX + 2 * r) + x_padding]
             # cv2.imshow("circle",crop_img)
+            showImg("circle sign " + str(i),crop_img)
             result = traffic_sign.inception(crop_img)
             print(result)
 
@@ -58,7 +69,7 @@ def detect_circles(frame, original, params):
                 cv2.circle(original, (circle[0], circle[1]), circle[2], (0, 255, 0), 2)
                 cv2.circle(original, (circle[0], circle[1]), 2, (255, 255, 0), 8)
 
-                cv2.putText(original, result.class_name, (x, y), font, 1, (0, 0, 0))
+                cv2.putText(original, result.class_name, (x, y), font, 1, color)
 
             i = i + 1
 
@@ -103,14 +114,14 @@ def shapes(cnts, img, original, modifier):
 
             # rectangle : x -> from min x point to max x (paddings ignored)
             crop_img = original[lower_y:upper_y, lower_x:upper_x]
-            cv2.imshow("detect", img)
+            showImg("Triangle sign " + str(triagleNB),crop_img)
             # cv2.imshow("cropped triangle", crop_img)
 
             result = traffic_sign.inception(crop_img)
 
             if result.score > .30:
                 print(result)
-                cv2.putText(img, result.class_name, (x, y), font, 1, (255, 0, 0))
+                cv2.putText(img, result.class_name, (x, y), font, 1, color)
 
         elif len(approx) == 4:
             cv2.putText(img, "Rectangle", (x, y), font, 1, (0))
@@ -122,8 +133,8 @@ def shapes(cnts, img, original, modifier):
 # frame = cv2.imread('./france-paris-30-kph-sign.jpg')
 
 # UNCOMMENT TO SWITCH IMG
-url_img = './traffic_sign2.jpg'
-#url_img = './roadsigns_1.png'
+#url_img = './traffic_sign2.jpg'
+url_img = './roadsigns_1.png'
 frame = cv2.imread(url_img)
 
 # FINE TUNING ======================================
@@ -149,18 +160,19 @@ blur = cv2.GaussianBlur(dilation, (5, 5), 0)
 
 _, threshold = cv2.threshold(blur, 90, 255, cv2.THRESH_BINARY)
 
-cv2.imshow('cleaned image', blur)
+#cv2.imshow('cleaned image', blur)
 
 detect_circles(blur, frame, params_circle)
-cv2.imshow('detected circles', frame)
-cv2.waitKey()
+#cv2.imshow('detected circles', frame)
+#cv2.waitKey()
 
 # _, threshold = cv2.threshold(blur, 90, 255, cv2.THRESH_BINARY)
 # cv2.imshow('threshold', threshold)
 contours, _ = cv2.findContours(threshold, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
 shapes(contours, frame, img, eps_shapes_modifier)
-cv2.imshow('detected shapes', frame)
+#cv2.imshow('detected shapes', frame)
+showImg("",frame)
 cv2.waitKey()
 
 # while True:
@@ -170,3 +182,4 @@ cv2.waitKey()
 #         break
 
 # cv2.destroyAllWindows()
+
